@@ -1,114 +1,122 @@
+# 할일 목록
+# drop구현 -> pygame에서 pg.event활용?
+# 한번 움직일때마다 블럭 순회돌며 이동할수있는지 확인-> on_block에서 이동하기전 다음위치 확인하기
 import pygame as pg
 from pygame.locals import *
 import os, time, random
+from typing import List
 
-# 테트리스는 가로 10 세로 40의 크기로 구성됨
-# 한 칸의 크기는 가로 20 세로 20으로 구성됨
-# 화면의 크기는 200, 800으로 구성
-# 
+# -- 테트리스 블럭 설정 -- 
+BLOCK_SIZE = (20, 20)
+
+# -- 테트리스 블럭 색깔 설정 --
+BLOCK_COLOR = {
+    "BLUE": (0,0,255),
+    "YELLOW": (255,255,0),
+    "PURPLE": (128,0,128),
+    "RED": (255,0,0),
+    "GREEN": (0,128,0)
+}
+BLOCK_COLOR_RANDOM = random.choice(list(BLOCK_COLOR))
+
+# -- 테트리스 보드 설정 -- 
+FILLED_SIZE = 10, 20
+SCREEN_SIZE = 400, 800
+SCREEN_POS = SCREEN_POS_X , SCREEN_POS_Y = 900, 50
+
+class Tetrimino:
+    def __init__(self, name:str, block:List[List], color:tuple):
+        self.name = name
+        self.block = block
+        self.color = color
 class App:
-    def __init__(self): # 여기에 사용할 변수, 함수등 다넣어놓고 사용
+    def __init__(self): 
+        # -- 게임시작 기본설정 --
         self._running = True
         self._display_surf = None
-        self.size = self.weight, self.height = 400, 800
-        self.board_x, self.board_y = 10, 20
-        self.EMPTY_board = 0
-        self.FILL_board = 1
-        self.board_state = [[self.EMPTY_board for _ in range(self.board_x)] for _ in range(self.board_y)] # 보드에있는 x, y를 격자 그리드로 설정하고 
-        self.bweight, self.bheight = (20, 20)
+        self.SCREEN_SIZE = self.SCREEN_X, self.SCREEN_Y = SCREEN_SIZE
 
-        self.curren_piece = True # 나중에 블럭의 모양으로 변경경
-        self.block_check = False
-        # 보드의 상태를 나타내는 그리드 완성 후 키보드로 이동하며 블록이 격자안에 채워지면 상태 바꾸기
+        # -- 필드 기본설정 --
+        self.FILLED = self.FILLED_X, self.FILLED_Y = FILLED_SIZE
+        self.FILLED_EMPTY = 0
+        self.FILLED_FULL = 1
+        self.board_state = [[self.FILLED_EMPTY for _ in range(self.FILLED_X)] for _ in range(self.FILLED_Y)] 
+
+        # -- 블럭 기본설정 --
+        self.BLOCK = self.BLOCK_X, self.BLOCK_Y = 20, 20
+        self.BLOCK_CURRENT = None 
+        self.mino = [
+            Tetrimino("I", [[-2,0], [-1,0], [0,0], [1,0]], BLOCK_COLOR_RANDOM),
+            Tetrimino("O", [[-1,-1], [0,-1], [-1,0], [0,0]], BLOCK_COLOR_RANDOM),
+            Tetrimino("L", [[1,-1], [-1,0], [0,0], [1,0]], BLOCK_COLOR_RANDOM),
+            Tetrimino("S", [[0,-1], [1,-1], [-1,0], [0,0]], BLOCK_COLOR_RANDOM),            
+            Tetrimino("J", [[-1,-1], [-1,0], [0,0], [1,0]], BLOCK_COLOR_RANDOM),
+            Tetrimino("Z", [[-1,-1], [0,-1], [0,0], [1,0]], BLOCK_COLOR_RANDOM),
+            Tetrimino("T", [[0,-1], [-1,0], [0,0], [1,0]], BLOCK_COLOR_RANDOM)]
         
-        self.move = self.moveX, self.moveY = (0, 0)
+
+        self.BLOCK_MOVE = self.BLOCK_MOVE_X, self.BLOCK_MOVE_Y = 20, 20
+    
         self.curren_piece = self.board_state[0][0]
 
-        xPos = 900
-        yPos = 50
-        os.environ['SDL_VIDEO_WINDOW_POS'] = f"{xPos},{yPos}"
+        os.environ['SDL_VIDEO_WINDOW_POS'] = f"{SCREEN_POS_X},{SCREEN_POS_Y}"
 
      
 
-    def on_init(self): #
+    def on_init(self):
         pg.init() # 초기화
-        self._display_surf = pg.display.set_mode(self.size, pg.HWSURFACE | pg.DOUBLEBUF, vsync=1)
+        self._display_surf = pg.display.set_mode(self.SCREEN_SIZE, pg.HWSURFACE | pg.DOUBLEBUF, vsync=1)
         self._running = True
 
         
 
-    def on_event(self, event):
+    def on_event(self, event): # 
         if event.type == pg.QUIT:
             self._running = False
 
-
         keys = pg.key.get_pressed()
-        if event.type == pg.KEYDOWN: # 연속으로 입력되는 문제 o
-            if keys[pg.K_LEFT] and self.moveX > 0:
 
-                self.board_state[1][2] = self.FILL_board
-                self.moveX -= 20
-                print(f"{self.moveX} {self.moveY}")
-            elif keys[pg.K_RIGHT] and self.moveX < 180:
-                self.moveX += 20
+        if event.type == pg.KEYDOWN: 
+            if keys[pg.K_LEFT] and self.BLOCK_MOVE_X > 0:
+
+                self.BLOCK_MOVE_X -= 20
+            elif keys[pg.K_RIGHT] and self.BLOCK_MOVE_X < 180:
+                self.BLOCK_MOVE_X += 20
                 
             elif keys[pg.K_DOWN]:
-                self.moveY += 20
-                print(self.board_state[(self.moveY//20)-2][(self.moveX//20)-2])
-            self.board_state[(self.moveY//20)-1][(self.moveX//20)-1] = self.FILL_board
-        
+                self.BLOCK_MOVE_Y += 20
         
 
+    def on_filled(self, width = int, height = int): # 테트리스 보드 그리기 
 
-# key값을 return받아서 on_block에서 블럭을 이동
-# 리턴을 어떻게 받아야할까
-
-
-    def on_board(self, width = int, height = int): # 테트리스 보드 그리기 
-        self.bsize = self.bweight, self.bheight 
-
-        for i in range(10):
-            for j in range(20):
-                newRect = pg.Rect(i*self.bweight, j*self.bheight, self.bweight, self.bheight)   
-                pg.draw.rect(self._display_surf, "black", newRect, 1) # 그다음부터가 
+        for i in range(width):
+            for j in range(height):
+                newRect = pg.Rect(i*self.BLOCK_X, j*self.BLOCK_Y, self.BLOCK_X, self.BLOCK_Y)   
+                pg.draw.rect(self._display_surf, "black", newRect, 1) 
 
 
-    def on_block(self, event, bweight, bheight): # 테트리스 이동시키는 함수
-        self.current_type_rect = None # 현재 출력할 블록저장
-        block_type = ["I", "O"]
+    def on_block(self, block_x, block_y): # 테트리스 이동시키는 함수
+        if self.BLOCK_CURRENT is None:
+            self.BLOCK_CURRENT = random.choice(self.mino)
         
-        """"Z": 3,
-            "S": 4,
-            "J": 5,
-            "L": 6,
-            "T": 7"""
-        
-        
-        if not self.block_check:
-            select = random.choice(block_type)
-            self.block_check = True
-            self.current_type = select
-        
-
-        if self.current_type == "I":
-            self.current_type_rect = pg.Rect(self.moveX, self.moveY, bweight, bheight*4)
-        elif self.current_type == "O":
-            self.current_type_rect = pg.Rect(self.moveX, self.moveY, bweight*2, bheight*2)
-
-        if self.current_type_rect: # draw
-            pg.draw.rect(self._display_surf, "blue", self.current_type_rect)
-            self.curren_piece = self.current_type
-
-        # 이 height가 0이될때까지 아래로 이동
-        # if not self.curren_piece:
-         
+        if self.BLOCK_CURRENT is not None: 
+            for block_pos in self.BLOCK_CURRENT.block:
+                x = (block_pos[0] + self.BLOCK_MOVE_X // self.BLOCK_X) * self.BLOCK_X
+                y = (block_pos[1] + self.BLOCK_MOVE_Y // self.BLOCK_Y) * self.BLOCK_Y
+                now_draw = pg.Rect(x, y, self.BLOCK_X, self.BLOCK_Y)
+                pg.draw.rect(self._display_surf, self.BLOCK_CURRENT.color, now_draw)
+   
+        # if time.perf_counter() > self.block_down + 1: # 수정필요
+        #     self.BLOCK_MOVE_Y += 20
+        #     self.block_down = time.perf_counter()
+    
 
     def on_loop(self):
         pass
 
     def on_render(self):
-        if (self.moveY//20) > 20:
-            self.moveY += 20
+        if (self.BLOCK_MOVE_Y//20) > 20:
+            self.BLOCK_MOVE_Y += 20
         pg.display.flip()
 
     def on_cleanup(self):
@@ -124,10 +132,10 @@ class App:
             for event in pg.event.get():
                 self.on_event(event)
                 
-            self.on_board()
+            self.on_filled(self.FILLED_X, self.FILLED_Y)
            
-            self.on_block(event, self.bweight, self.bheight)
-            self.curren_piece = True
+            self.on_block(self.BLOCK_X, self.BLOCK_Y)
+    
 
             self.on_loop()
             self.on_render()
